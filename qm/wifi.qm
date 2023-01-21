@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model version="5.2.4" links="0">
+ <framework name="qpc"/>
+ <package name="AOs" stereotype="0x02">
+  <class name="WiFi" superclass="qpc::QActive">
+   <attribute name="obj" type="WiFi" visibility="0x00" properties="0x01"/>
+   <statechart properties="0x00">
+    <initial target="../1">
+     <initial_glyph conn="4,4,5,0,9,4">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="disconnected">
+     <tran trig="CONNECTING" target="../../2">
+      <tran_glyph conn="20,14,1,3,15">
+       <action box="2,-2,15,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="6,8,14,11"/>
+    </state>
+    <state name="connecting">
+     <tran trig="CONNECTED" target="../../3/1">
+      <tran_glyph conn="42,19,2,0,10">
+       <action box="1,1,15,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="35,8,14,11"/>
+    </state>
+    <state name="sta_start">
+     <tran trig="DISCONNECTED" target="../../1">
+      <tran_glyph conn="12,24,0,2,-5">
+       <action box="1,-4,14,2"/>
+      </tran_glyph>
+     </tran>
+     <state name="connected">
+      <tran trig="GOT_IP" target="../../2">
+       <tran_glyph conn="35,37,3,1,-15">
+        <action box="-12,-3,11,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="35,29,14,11"/>
+     </state>
+     <state name="got_ip">
+      <tran trig="LOST_IP" target="../../1">
+       <tran_glyph conn="20,32,1,3,15">
+        <action box="3,-2,9,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="6,29,14,11"/>
+     </state>
+     <state_glyph node="4,24,47,19"/>
+    </state>
+    <state_diagram size="80,197"/>
+   </statechart>
+  </class>
+  <operation name="WiFi_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>QActive_ctor(&amp;WiFi_obj.super, Q_STATE_CAST(&amp;WiFi_initial));</code>
+  </operation>
+  <attribute name="AO_WiFi" type="QActive * const" visibility="0x00" properties="0x00">
+   <code> = &amp;WiFi_obj.super;</code>
+  </attribute>
+ </package>
+ <directory name="../main">
+  <file name="qhsm-wifi.h">
+   <text>#ifndef QHSM_WIFI_SM_H
+#define QHSM_WIFI_SM_H
+
+enum wifiSignals {
+    DISCONNECTED_SIG = Q_USER_SIG,
+    CONNECTING_SIG,
+    CONNECTED_SIG,
+    GOT_IP_SIG,
+    LOST_IP_SIG,
+    MAX_SIG_SIG
+};
+
+$declare${AOs::WiFi}
+$declare${AOs::WiFi_ctor}
+$declare${AOs::AO_WiFi}
+#endif</text>
+  </file>
+  <file name="qhsm-wifi.c">
+   <text>#include &quot;qpc.h&quot;
+#include &quot;qhsm-wifi.h&quot;
+
+$define${AOs::WiFi}
+$define${AOs::WiFi_ctor}
+$define${AOs::AO_WiFi}
+</text>
+  </file>
+ </directory>
+</model>
