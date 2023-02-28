@@ -2,91 +2,342 @@
 <model version="5.2.4" links="0">
  <framework name="qpc"/>
  <package name="AOs" stereotype="0x02">
-  <class name="WiFi" superclass="qpc::QActive">
-   <attribute name="obj" type="WiFi" visibility="0x00" properties="0x01"/>
-   <statechart properties="0x00">
-    <initial target="../1">
-     <initial_glyph conn="4,4,5,0,9,4">
-      <action box="0,-2,10,2"/>
-     </initial_glyph>
-    </initial>
-    <state name="disconnected">
-     <tran trig="CONNECTING" target="../../2">
-      <tran_glyph conn="20,14,1,3,15">
-       <action box="2,-2,15,2"/>
-      </tran_glyph>
-     </tran>
-     <state_glyph node="6,8,14,11"/>
-    </state>
-    <state name="connecting">
-     <tran trig="CONNECTED" target="../../3/1">
-      <tran_glyph conn="42,19,2,0,10">
-       <action box="1,1,15,2"/>
-      </tran_glyph>
-     </tran>
-     <state_glyph node="35,8,14,11"/>
-    </state>
-    <state name="sta_start">
-     <tran trig="DISCONNECTED" target="../../1">
-      <tran_glyph conn="12,24,0,2,-5">
-       <action box="1,-4,14,2"/>
-      </tran_glyph>
-     </tran>
-     <state name="connected">
-      <tran trig="GOT_IP" target="../../2">
-       <tran_glyph conn="35,37,3,1,-15">
-        <action box="-12,-3,11,2"/>
+  <package name="Connectivity" stereotype="0x00">
+   <class name="WiFi" superclass="qpc::QActive">
+    <attribute name="obj" type="WiFi" visibility="0x00" properties="0x01"/>
+    <statechart properties="0x00">
+     <initial target="../2">
+      <initial_glyph conn="19,24,4,3,5,7">
+       <action box="0,-2,8,2"/>
+      </initial_glyph>
+     </initial>
+     <state name="sta_started">
+      <tran trig="DISCONNECT_BUTTON_B" target="../3">
+       <tran_glyph conn="20,77,3,3,44">
+        <action box="0,-2,20,3"/>
        </tran_glyph>
       </tran>
-      <state_glyph node="35,29,14,11"/>
-     </state>
-     <state name="got_ip">
-      <tran trig="LOST_IP" target="../../1">
-       <tran_glyph conn="20,32,1,3,15">
-        <action box="3,-2,9,2"/>
+      <tran trig="CONNECTION_LOST" target="../3">
+       <tran_glyph conn="20,81,3,3,44">
+        <action box="0,-2,17,2"/>
        </tran_glyph>
       </tran>
-      <state_glyph node="6,29,14,11"/>
+      <state name="connected">
+       <entry>ESP_LOGI(TAG, &quot;Entered connected state&quot;);</entry>
+       <exit>ESP_LOGI(TAG, &quot;Exit Connected state&quot;);</exit>
+       <tran trig="GOT_IP" target="../../5">
+        <tran_glyph conn="64,66,3,1,-24">
+         <action box="-16,-2,11,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="64,58,14,11">
+        <entry box="1,2,6,2"/>
+        <exit box="1,4,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="disconnect">
+       <entry>ESP_LOGI(TAG, &quot; Entered disconnect state&quot;);</entry>
+       <state_glyph node="64,74,14,11">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="try_connect">
+       <entry>ESP_LOGI(TAG, &quot;Connecting state&quot;);
+
+esp_wifi_connect();</entry>
+       <tran trig="CONNECTED" target="../../2">
+        <tran_glyph conn="71,54,2,0,4">
+         <action box="-11,1,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="64,43,14,11">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="got_ip">
+       <entry>ESP_LOGI(TAG, &quot;Entered GOT IP state&quot;);</entry>
+       <tran trig="LOST_IP" target="../../2">
+        <tran_glyph conn="40,61,1,3,24">
+         <action box="8,-2,9,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="26,58,14,11">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="buttons_dispatch">
+       <entry>ESP_LOGI(TAG, &quot;Button dispatch state&quot;);</entry>
+       <tran trig="CONNECT" target="../../4">
+        <tran_glyph conn="40,49,1,3,24">
+         <action box="7,-2,21,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="26,43,14,11">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state_glyph node="20,38,61,50"/>
      </state>
-     <state_glyph node="4,24,47,19"/>
-    </state>
-    <state_diagram size="80,197"/>
-   </statechart>
+     <state name="init">
+      <entry>// Subscribt to required signals from QF
+QActive_subscribe(&amp;me-&gt;super, CONNECT_SIG);
+QActive_subscribe(&amp;me-&gt;super, DISCONNECT_BUTTON_B_SIG);
+QActive_subscribe(&amp;me-&gt;super, CONNECTED_SIG);
+QActive_subscribe(&amp;me-&gt;super, GOT_IP_SIG);
+QActive_subscribe(&amp;me-&gt;super, LOST_IP_SIG);
+QActive_subscribe(&amp;me-&gt;super, STA_STARTED_SIG);
+QActive_subscribe(&amp;me-&gt;super, CONNECTION_LOST_SIG);
+
+// Disable default WiFi logging messages
+esp_log_level_set(&quot;wifi&quot;, ESP_LOG_NONE);
+
+s_wifi_event_group = xEventGroupCreate();
+
+// Event loop for the WiFi driver
+ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+// Create event hadler for the connection
+esp_event_handler_instance_t instance_wifi_event;
+esp_event_handler_instance_t instance_ip_event;
+ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &amp;event_handler, NULL, &amp;instance_wifi_event));
+ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID, &amp;event_handler, NULL, &amp;instance_ip_event));
+
+// Initialize the TCP stack
+ESP_ERROR_CHECK(esp_netif_init());
+
+// Default WiFi config - operations must be in this order
+wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
+ESP_ERROR_CHECK(esp_wifi_init(&amp;wifi_config));
+ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
+esp_netif_sta = esp_netif_create_default_wifi_sta();
+
+// Start WiFi
+ESP_ERROR_CHECK(esp_wifi_start());</entry>
+      <tran trig="STA_STARTED" target="../../1/6">
+       <tran_glyph conn="33,34,2,0,9">
+        <action box="1,2,12,3"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="26,23,14,11">
+       <entry box="1,2,6,2"/>
+      </state_glyph>
+     </state>
+     <state_diagram size="105,197"/>
+    </statechart>
+   </class>
+  </package>
+  <package name="Peripherals" stereotype="0x00">
+   <class name="Button" superclass="qpc::QActive">
+    <attribute name="obj" type="Button" visibility="0x00" properties="0x01"/>
+    <attribute name="timeEvt" type="QTimeEvt" visibility="0x02" properties="0x00"/>
+    <statechart properties="0x00">
+     <initial target="../1">
+      <action>ESP_LOGI(TAG, &quot;Button Initial transition&quot;);
+QActive_subscribe(&amp;me-&gt;super, BUTTON_PRESSED_SIG);</action>
+      <initial_glyph conn="26,6,5,0,6,7">
+       <action box="0,-2,10,2"/>
+      </initial_glyph>
+     </initial>
+     <state name="Button">
+      <tran trig="BUTTON_PRESSED">
+       <action>ESP_LOGI(TAG, &quot;Pressed button is %d&quot;, Q_EVT_CAST(ButtonEvt)-&gt;buttonNum);
+
+switch (Q_EVT_CAST(ButtonEvt)-&gt;buttonNum) {
+    case BUTTON_A: {
+        ButtonEvt *pe = Q_NEW(ButtonEvt, CONNECT_SIG);
+        QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_Button);
+        ESP_LOGI(TAG, &quot;Posted CONNECTING_SIG&quot;);
+        break;
+    }
+
+    case BUTTON_B: {
+        ButtonEvt *pe = Q_NEW(ButtonEvt, DISCONNECT_BUTTON_B_SIG);
+        QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_Button);
+        ESP_LOGI(TAG, &quot;Posted FORCE_DISCONNECT_SIG&quot;);
+        break;
+    }
+
+    case BUTTON_C: {
+        break;
+    }
+
+    default:
+    break;
+}</action>
+       <tran_glyph conn="8,19,3,-1,20">
+        <action box="1,-3,18,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="8,13,47,16"/>
+     </state>
+     <state_diagram size="80,50"/>
+    </statechart>
+   </class>
+  </package>
+  <package name="Ctors" stereotype="0x00">
+   <operation name="WiFi_ctor" type="void" visibility="0x00" properties="0x00">
+    <code>QActive_ctor(&amp;WiFi_obj.super, Q_STATE_CAST(&amp;WiFi_initial));</code>
+   </operation>
+   <operation name="Button_ctor" type="void" visibility="0x00" properties="0x00">
+    <code>Button *me = &amp;Button_obj;
+
+QActive_ctor(&amp;Button_obj.super, Q_STATE_CAST(&amp;Button_initial));</code>
+   </operation>
+  </package>
+  <package name="Opaque_pointers" stereotype="0x00">
+   <attribute name="AO_Button" type="QActive * const" visibility="0x00" properties="0x00">
+    <code> = &amp;Button_obj.super;</code>
+   </attribute>
+   <attribute name="AO_WiFi" type="QActive * const" visibility="0x00" properties="0x00">
+    <code> = &amp;WiFi_obj.super;</code>
+   </attribute>
+  </package>
+ </package>
+ <package name="Events" stereotype="0x01">
+  <class name="WifiEvt" superclass="qpc::QEvt">
+   <attribute name="n" type="uint8_t" visibility="0x00" properties="0x00"/>
   </class>
-  <operation name="WiFi_ctor" type="void" visibility="0x00" properties="0x00">
-   <code>QActive_ctor(&amp;WiFi_obj.super, Q_STATE_CAST(&amp;WiFi_initial));</code>
-  </operation>
-  <attribute name="AO_WiFi" type="QActive * const" visibility="0x00" properties="0x00">
-   <code> = &amp;WiFi_obj.super;</code>
-  </attribute>
+  <class name="ButtonEvt" superclass="qpc::QEvt">
+   <attribute name="buttonNum" type="uint8_t" visibility="0x00" properties="0x00"/>
+  </class>
  </package>
  <directory name="../main">
-  <file name="qhsm-wifi.h">
-   <text>#ifndef QHSM_WIFI_SM_H
-#define QHSM_WIFI_SM_H
+  <file name="qhsm-wifi.c">
+   <text>#include &quot;qpc.h&quot;
+
+#include &quot;freertos/FreeRTOS.h&quot;
+#include &quot;freertos/task.h&quot;
+#include &quot;freertos/event_groups.h&quot;
+#include &quot;esp_system.h&quot;
+#include &quot;esp_wifi.h&quot;
+#include &quot;esp_event.h&quot;
+#include &quot;esp_log.h&quot;
+
+#include &quot;lwip/err.h&quot;
+#include &quot;lwip/sys.h&quot;
+
+#include &quot;wifi_button.h&quot;
+#include &quot;config_sta.h&quot;
+
+static const char * TAG = &quot;qhsm_wifi&quot;;
+
+static EventGroupHandle_t s_wifi_event_group;
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+
+// netif objects for the station and access point
+esp_netif_t* esp_netif_sta = NULL;
+
+static wifi_config_t wifi_config = {
+    .sta = {
+        .ssid = WIFI_SSID,
+        .password = WIFI_PASSWORD,
+
+        .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+
+        .pmf_cfg = {
+            .capable = true,
+            .required = false
+        },
+    },
+};
+
+
+
+$define${AOs::Connectivity::WiFi}
+$define${AOs::Ctors::WiFi_ctor}
+$define${AOs::Opaque_pointers::AO_WiFi}
+
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    if (event_base == WIFI_EVENT) {
+        switch(event_id) {
+
+            case WIFI_EVENT_STA_START: {
+                WifiEvt *pe = Q_NEW(WifiEvt, STA_STARTED_SIG);
+                QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_WiFi);
+                ESP_LOGW(TAG, &quot;Published STA_STARTED_SIG&quot;);
+            }
+            break;
+
+            case WIFI_EVENT_STA_DISCONNECTED: {
+                system_event_sta_disconnected_t* event = (system_event_sta_disconnected_t*)event_data;
+                ESP_LOGW(TAG,&quot;connect to the AP fail - reason %i&quot;, event-&gt;reason); // wifi_err_reason_t
+                WifiEvt *pe = Q_NEW(WifiEvt, DISCONNECTED_SIG);
+                QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_WiFi);
+                ESP_LOGW(TAG, &quot;Published DISCONNECTED_SIG&quot;);
+            }
+            break;
+
+            case WIFI_EVENT_STA_CONNECTED: {
+                WifiEvt *pe = Q_NEW(WifiEvt, CONNECTED_SIG);
+                QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_WiFi);
+                ESP_LOGW(TAG, &quot;Published WIFI_EVENT_STA_CONNECTED&quot;);
+            }
+            break;
+        }
+    } else if (event_base == IP_EVENT) {
+        switch(event_id) {
+            case IP_EVENT_STA_GOT_IP: {
+                WifiEvt *pe = Q_NEW(WifiEvt, GOT_IP_SIG);
+                QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_WiFi);
+                ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+                ESP_LOGI(TAG, &quot;got ip:&quot; IPSTR, IP2STR(&amp;event-&gt;ip_info.ip));
+                ESP_LOGW(TAG, &quot;Published GOT_IP_SIG&quot;);
+
+            }
+            break;
+        }
+    }
+}
+</text>
+  </file>
+  <file name="qhsm-button.c">
+   <text>#include &quot;qpc.h&quot;
+
+#include &quot;esp_system.h&quot;
+#include &quot;esp_wifi.h&quot;
+#include &quot;esp_event.h&quot;
+#include &quot;esp_log.h&quot;
+
+#include &quot;bsp.h&quot;
+#include &quot;wifi_button.h&quot;
+
+static const char * TAG = &quot;button&quot;;
+
+$define${AOs::Peripherals::Button}
+$define${AOs::Ctors::Button_ctor}
+$define${AOs::Opaque_pointers::AO_Button}</text>
+  </file>
+  <file name="wifi_button.h">
+   <text>#ifndef WF_BUTTON_H
+#define WF_BUTTON_H
+
+#define DEBOUNCE_TIME 3
 
 enum wifiSignals {
     DISCONNECTED_SIG = Q_USER_SIG,
-    CONNECTING_SIG,
+    STA_STARTED_SIG,
+    CONNECT_SIG,
     CONNECTED_SIG,
+    CONNECTION_LOST_SIG,
     GOT_IP_SIG,
     LOST_IP_SIG,
-    MAX_SIG_SIG
+    BUTTON_PRESSED_SIG,
+    DISCONNECT_BUTTON_B_SIG,
+    MAX_PUB_SIG
 };
 
-$declare${AOs::WiFi}
-$declare${AOs::WiFi_ctor}
-$declare${AOs::AO_WiFi}
-#endif</text>
-  </file>
-  <file name="qhsm-wifi.c">
-   <text>#include &quot;qpc.h&quot;
-#include &quot;qhsm-wifi.h&quot;
+$declare${Events::ButtonEvt}
+$declare${AOs::Peripherals::Button}
+$declare${AOs::Ctors::Button_ctor}
+$declare${AOs::Opaque_pointers::AO_Button}
 
-$define${AOs::WiFi}
-$define${AOs::WiFi_ctor}
-$define${AOs::AO_WiFi}
-</text>
+$declare${Events::WifiEvt}
+$declare${AOs::Connectivity::WiFi}
+$declare${AOs::Ctors::WiFi_ctor}
+$declare${AOs::Opaque_pointers::AO_WiFi}
+
+#endif</text>
   </file>
  </directory>
 </model>

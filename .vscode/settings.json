@@ -11,6 +11,16 @@
     "idf.pythonBinPathWin": "C:\\Users\\Developer\\.espressif\\python_env\\idf4.4_py3.8_env\\Scripts\\python.exe",
     "idf.toolsPathWin": "C:\\Users\\Developer\\.espressif",
     "files.associations": {
-        "qhsm-wifi.h": "c"
-    }
+        "qhsm-wifi.h": "c",
+        "err.h": "c",
+        "esp_log.h": "c",
+        "qf_port.h": "c",
+        "qpc.h": "c",
+        "bsp.h": "c",
+        "freertos.h": "c",
+        "esp_freertos_hooks.h": "c",
+        "gpio.h": "c",
+        "task.h": "c"
+    },
+    "idf.flashType": "UART"
 }

@@ -9,9 +9,11 @@
   <item name="backups">0</item>
  </group>
  <group name="windows">
-  <item id="../main::qhsm-wifi.c">0,0,674,300</item>
-  <item id="../main::qhsm-wifi.h">0,300,674,300</item>
-  <item id="AOs::AO_WiFi::SM">0,0,995,654,*</item>
+  <item id="../main::qhsm-wifi.c">0,0,1035,689,*</item>
+  <item id="AOs::Connectivity::WiFi::SM">0,0,1035,654</item>
+  <item id="AOs::Peripherals::Button::SM">-640,0,1035,654</item>
+  <item id="../main::qhsm-button.c">361,133,674,300</item>
+  <item id="../main::wifi_button.h">361,0,674,300</item>
  </group>
  <group name="search">
   <item name="options">2032128</item>

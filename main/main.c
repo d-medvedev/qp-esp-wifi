@@ -1,13 +1,20 @@
 #include "qpc.h"
 
-#include "qhsm-wifi.h"
-
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "nvs_flash.h"
+#include "esp_heap_caps.h"
+
+#include "wifi_button.h"
+#include "bsp.h"
 
 Q_DEFINE_THIS_FILE
 
 static const char * TAG = "main";
+
+void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name) {
+    printf("%s was called but failed to allocate %d bytes with 0x%X capabilities. \n",function_name, requested_size, caps);
+}
 
 /*
  * small event memory pool
@@ -34,16 +41,38 @@ typedef struct {
 } largePool;
 static QF_MPOOL_EL(largePool) largePoolSto[CONFIG_QPC_LARGE_POOL_SIZE];
 
-static QEvt const *wifiQueueSto[6];
+static QEvt const *wifiQueueSto[10];
+static QEvt const *buttonQueueSto[10];
+static QSubscrList subscrSto[MAX_PUB_SIG];
 
-static StackType_t wifiStack[2048];
+static StackType_t wifiStack[4096];
+static StackType_t buttonStack[2048];
 
 void app_main(void)
 {
+    /* Initialize GPIO */
+     bsp_init();
+
+    /* ESP SDK initialization stuff*/
+    heap_caps_register_failed_alloc_callback(heap_caps_alloc_failed_hook);    
+
+    esp_err_t ret = ESP_OK;
+    ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    /* end of ESP SDK initialization*/
+
     WiFi_ctor(); /* instantiate WiFi active object */
+    Button_ctor(); /* instantiate Button active object */
 
      /* Initialzie QP/C Framework */
     QF_init();
+
+    /* initialize publish-subscribe... */
+    QF_psInit(subscrSto, Q_DIM(subscrSto));
 
     /* Initialize Event Memory Pool */
     QF_poolInit(smallPoolSto, sizeof(smallPoolSto), sizeof(smallPoolSto[0]));
@@ -52,13 +81,22 @@ void app_main(void)
 
     /* Start the active object */
     QActive_setAttr(AO_WiFi, TASK_NAME_ATTR, "WiFi");
+    QActive_setAttr(AO_Button, TASK_NAME_ATTR, "Button");
 
     QACTIVE_START(AO_WiFi,   /* AO to start */
-                (uint_fast8_t)(1),   /* QP priority of the AO */
+                (uint_fast8_t)(3),   /* QP priority of the AO */
                 wifiQueueSto,        /* event queue storage */
                 Q_DIM(wifiQueueSto), /* queue length [events] */
                 wifiStack,           /* stack storage */
                 sizeof(wifiStack),   /* stack size [bytes] */
+                (QEvt *)0);
+
+    QACTIVE_START(AO_Button,   /* AO to start */
+                (uint_fast8_t)(4),   /* QP priority of the AO */
+                buttonQueueSto,        /* event queue storage */
+                Q_DIM(buttonQueueSto), /* queue length [events] */
+                buttonStack,           /* stack storage */
+                sizeof(buttonStack),   /* stack size [bytes] */
                 (QEvt *)0);
 
     QF_run();
