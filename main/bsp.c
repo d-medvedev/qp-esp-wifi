@@ -33,6 +33,8 @@
 #include "qpc.h"
 #include "qf_port.h"
 
+#include <string.h>
+
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/FreeRTOS.h"
@@ -40,11 +42,18 @@
 #include "esp_freertos_hooks.h"
 #include "driver/gpio.h"
 
-#include "bsp.h"
+#include "bmp280.h"
 
+#include "bsp.h"
 #include "wifi_button.h"
 
+
 static const char * TAG = "bsp";
+
+static bmp280_t bmp280_obj;
+static bmp280_params_t bmp280_params;
+
+static float temperature, pressure, humidity;
 
 int_t qf_run_active = 0;
 
@@ -61,6 +70,7 @@ bool debounce_switch(uint8_t buttonType)
 static void buttons_processing_task(void* arg)
 {
     printf("Button task started \n");
+    static uint32_t bmp_read_cntr;
 
     for(;;) {        
 
@@ -84,8 +94,16 @@ static void buttons_processing_task(void* arg)
             QACTIVE_PUBLISH(&pe->super, AO_Button);
             printf("Button C pressed \n");
         }
+        
+        if (++bmp_read_cntr % 20 == 0)
+        {
+            #if 1
+                bmp280_read_float(&bmp280_obj, &temperature, &pressure, &humidity);                
+                printf("Temp: %.2f Pressure: %.2f \n", temperature, pressure);
+            #endif
+        }
 
-        vTaskDelay(10 / portTICK_RATE_MS);
+        vTaskDelay(50 / portTICK_RATE_MS);
     }
 }
 
@@ -119,6 +137,7 @@ IRAM_ATTR void Q_onAssert(char_t const * const module, int_t location)
     ESP_LOGE(TAG, "Q_onAssert: module:%s loc:%d\n", module, location);
 }
 
+
 void bsp_init (void) {
 
     //Zero-initialize the config structure.
@@ -134,6 +153,13 @@ void bsp_init (void) {
     io_conf.pull_up_en = 1;
 
     gpio_config(&io_conf);
+
+    // Configure I2C interface and BMP280 sensor
+    ESP_ERROR_CHECK(i2cdev_init());
+    bmp280_init_default_params(&bmp280_params);
+    memset(&bmp280_obj, 0, sizeof(bmp280_t));
+    bmp280_init_desc(&bmp280_obj, BMP280_I2C_ADDRESS_0, I2C_NUM_0, GPIO_NUM_21, GPIO_NUM_22);
+    bmp280_init(&bmp280_obj, &bmp280_params);
 
     //Start gpio task
     xTaskCreate(buttons_processing_task, "buttons_processing_task", 2048, NULL, 10, NULL);

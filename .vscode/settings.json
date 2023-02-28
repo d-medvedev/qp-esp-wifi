@@ -20,7 +20,8 @@
         "freertos.h": "c",
         "esp_freertos_hooks.h": "c",
         "gpio.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "wifi_button.h": "c"
     },
     "idf.flashType": "UART"
 }
