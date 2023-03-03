@@ -8,8 +8,7 @@
    <attribute name="press_cntr" type="uint32_t" visibility="0x02" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
-     <action>ESP_LOGI(TAG, &quot;Button Initial transition&quot;);
-QActive_subscribe(&amp;me-&gt;super, BUTTON_PRESSED_SIG);</action>
+     <action>QActive_subscribe(&amp;me-&gt;super, BUTTON_PRESSED_SIG);</action>
      <initial_glyph conn="26,6,5,0,6,7">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -31,7 +30,7 @@ QActive_subscribe(&amp;me-&gt;super, BUTTON_PRESSED_SIG);</action>
 
     case BUTTON_C: {
         me-&gt;press_cntr++;
-        if (me-&gt;press_cntr % 2)
+        if (0 == me-&gt;press_cntr % 2)
         {
             ButtonEvt *pe = Q_NEW(ButtonEvt, STOP_TELEMETRY_SIG);
             QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_Button);
@@ -169,6 +168,9 @@ ESP_ERROR_CHECK(esp_wifi_start());</entry>
 QActive_subscribe(&amp;me-&gt;super, GOT_IP_SIG);
 QActive_subscribe(&amp;me-&gt;super, DISCONNECT_SIG);
 QActive_subscribe(&amp;me-&gt;super, MQTT_CONNECTED_SIG);
+QActive_subscribe(&amp;me-&gt;super, SEND_MEAS_SIG);
+
+get_mac_address();
 mqtt_app_init(list_topics_subscribe);</action>
      <initial_glyph conn="5,4,5,0,11,5">
       <action box="0,-2,10,2"/>
@@ -181,10 +183,17 @@ mqtt_app_init(list_topics_subscribe);</action>
       </initial_glyph>
      </initial>
      <state name="connected">
-      <entry>ESP_LOGI(TAG, &quot;MQTT Connected state&quot;);
+      <entry>char* buf;
+uint32_t len;
+
+ESP_LOGI(TAG, &quot;MQTT Connected state&quot;);
 
 QTimeEvt_armX(&amp;me-&gt;sendTimeEvt, BSP_TICKS_PER_SEC/2U,
-              BSP_TICKS_PER_SEC/2U);</entry>
+              BSP_TICKS_PER_SEC/2U);
+
+len = asprintf(&amp;buf, &quot;{\&quot;msg_type\&quot;: \&quot;connect\&quot;,\&quot;msg\&quot;:{\&quot;device_id\&quot;: \&quot;112233445566\&quot;,\&quot;hw_version\&quot;: \&quot;1.0.0.1\&quot;,\&quot;fw_version\&quot;: \&quot;%s\&quot;,\&quot;username\&quot;: \&quot;%s\&quot;,\&quot;time\&quot;:{\&quot;validity\&quot;: false,\&quot;timestamp\&quot;: 1674706689}}}&quot;, /*got_ip_addr_str,*/ FW_VERSION, MQTT_USERNAME);
+mqtt_publish(OUT_TOPIC, buf, len, 1, 0);
+printf(&quot;%s\n\r&quot;, buf);</entry>
       <exit>ESP_ERROR_CHECK(mqtt_stop());
 CloudEvt *pe = Q_NEW(CloudEvt, MQTT_DISCONNECTED_SIG);
 QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_Cloud);
@@ -194,10 +203,15 @@ QTimeEvt_disarm(&amp;me-&gt;sendTimeEvt);</exit>
         <action box="1,-2,17,2"/>
        </tran_glyph>
       </tran>
-      <tran trig="SEND_TIMEOUT">
-       <action>ESP_LOGI(TAG, &quot;Send timer expired&quot;);</action>
-       <tran_glyph conn="12,38,3,-1,6">
-        <action box="0,-2,12,2"/>
+      <tran trig="SEND_MEAS">
+       <action>char* buf;
+uint32_t len;
+
+len = asprintf(&amp;buf,&quot;{\&quot;msg_type\&quot;: \&quot;telemetry\&quot;,\&quot;msg\&quot;:{\&quot;params\&quot;:{\&quot;temperature\&quot;:%.1f,\&quot;pressure\&quot;:%.1f},\&quot;time\&quot;:{\&quot;validity\&quot;: true,\&quot;timestamp\&quot;: 1674706689}}}&quot;, Q_EVT_CAST(SensorEvt)-&gt;temperature, Q_EVT_CAST(SensorEvt)-&gt;pressure);
+mqtt_publish(OUT_TOPIC, buf, len, 1, 0);
+printf(&quot;%s\n\r&quot;, buf);</action>
+       <tran_glyph conn="12,38,3,-1,10">
+        <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
       <state_glyph node="12,32,17,9">
@@ -228,6 +242,75 @@ QTimeEvt_disarm(&amp;me-&gt;sendTimeEvt);</exit>
       </state_glyph>
      </state>
      <state_glyph node="8,9,68,35"/>
+    </state>
+    <state_diagram size="80,50"/>
+   </statechart>
+  </class>
+  <class name="Sensor" superclass="qpc::QActive">
+   <attribute name="obj" type="Sensor" visibility="0x00" properties="0x01"/>
+   <attribute name="meas_interval_sec" type="uint32_t" visibility="0x02" properties="0x00"/>
+   <attribute name="sensor_data" type="sensor_data_t" visibility="0x00" properties="0x00"/>
+   <attribute name="measTimeEvt" type="QTimeEvt" visibility="0x02" properties="0x00"/>
+   <statechart properties="0x00">
+    <initial target="../1">
+     <action>// Subscribt to required signals from QF
+QActive_subscribe(&amp;me-&gt;super, START_TELEMETRY_SIG);
+QActive_subscribe(&amp;me-&gt;super, STOP_TELEMETRY_SIG);</action>
+     <initial_glyph conn="8,3,5,0,12,8">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="active">
+     <initial target="../1">
+      <initial_glyph conn="13,15,5,0,15,3">
+       <action box="0,-2,10,2"/>
+      </initial_glyph>
+     </initial>
+     <state name="idle">
+      <entry>ESP_LOGI(TAG, &quot;Sensor IDLE state&quot;);</entry>
+      <tran trig="START_TELEMETRY" target="../../2">
+       <tran_glyph conn="18,25,2,0,7">
+        <action box="1,2,15,3"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="15,18,26,7">
+       <entry box="1,2,6,2"/>
+      </state_glyph>
+     </state>
+     <state name="read_data">
+      <entry>printf(&quot;Sensor READ DATA state&quot;);
+
+QTimeEvt_armX(&amp;me-&gt;measTimeEvt, BSP_TICKS_PER_SEC/2U,
+              BSP_TICKS_PER_SEC/2U);</entry>
+      <exit>QTimeEvt_disarm(&amp;me-&gt;measTimeEvt);</exit>
+      <tran trig="STOP_TELEMETRY" target="../../1">
+       <tran_glyph conn="37,32,0,2,-7">
+        <action box="1,-5,16,2"/>
+       </tran_glyph>
+      </tran>
+      <tran trig="MEAS_TIMEOUT">
+       <action>float t, p;
+
+read_bmp280_data(&amp;t, &amp;p);
+me-&gt;sensor_data.temperature = t;
+me-&gt;sensor_data.pressure = p;
+
+SensorEvt *pe = Q_NEW(SensorEvt, SEND_MEAS_SIG);
+pe-&gt;temperature = t;
+pe-&gt;pressure = p;
+QACTIVE_PUBLISH(&amp;pe-&gt;super, AO_Sensor);
+
+//printf(&quot;Temp: %.2f Pressure: %.2f \n&quot;, t, p);</action>
+       <tran_glyph conn="15,38,3,-1,10">
+        <action box="0,-2,15,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="15,32,26,13">
+       <entry box="1,2,6,2"/>
+       <exit box="1,4,6,2"/>
+      </state_glyph>
+     </state>
+     <state_glyph node="12,11,45,37"/>
     </state>
     <state_diagram size="80,50"/>
    </statechart>
@@ -265,6 +348,19 @@ me-&gt;press_cntr = 0;</code>
   <attribute name="AO_Cloud" type="QActive * const" visibility="0x00" properties="0x00">
    <code> = &amp;Cloud_obj.super;</code>
   </attribute>
+  <attribute name="AO_Sensor" type="QActive * const" visibility="0x00" properties="0x00">
+   <code> = &amp;Sensor_obj.super;</code>
+  </attribute>
+  <operation name="Sensor_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>Sensor *me = &amp;Sensor_obj;
+
+QActive_ctor(&amp;Sensor_obj.super, Q_STATE_CAST(&amp;Sensor_initial));
+QTimeEvt_ctorX(&amp;me-&gt;measTimeEvt, &amp;me-&gt;super, MEAS_TIMEOUT_SIG, 0U);</code>
+  </operation>
+  <class name="SensorEvt" superclass="qpc::QEvt">
+   <attribute name="temperature" type="float" visibility="0x00" properties="0x00"/>
+   <attribute name="pressure" type="float" visibility="0x00" properties="0x00"/>
+  </class>
  </package>
  <directory name="../main">
   <file name="qhsm-wifi.c">
@@ -386,28 +482,40 @@ enum wifiSignals {
     START_TELEMETRY_SIG,
     STOP_TELEMETRY_SIG,
     SEND_TIMEOUT_SIG,
+    MEAS_TIMEOUT_SIG,
     DISCONNECT_SIG,
     MQTT_CONNECTED_SIG,
     MQTT_DISCONNECTED_SIG,
+    SEND_MEAS_SIG,
 
     MAX_PUB_SIG
 };
 
+typedef struct sensor_data
+{
+    float temperature;
+    float pressure;
+} sensor_data_t;
+
 $declare${AOs::Button}
 $declare${AOs::WiFi}
 $declare${AOs::Cloud}
+$declare${AOs::Sensor}
 
 $declare${Shared::ButtonEvt}
 $declare${Shared::WifiEvt}
 $declare${Shared::CloudEvt}
+$declare${Shared::SensorEvt}
 
 $declare${Shared::AO_WiFi}
 $declare${Shared::AO_Button}
 $declare${Shared::AO_Cloud}
+$declare${Shared::AO_Sensor}
 
 $declare${Shared::WiFi_ctor}
 $declare${Shared::Button_ctor}
 $declare${Shared::Cloud_ctor}
+$declare${Shared::Sensor_ctor}
 
 #endif</text>
   </file>
@@ -415,8 +523,8 @@ $declare${Shared::Cloud_ctor}
    <text>#ifndef MQTT_SETTINGS_H
 #define MQTT_SETTINGS_H
 
-#define     IN_TOPIC        &quot;devices/in/bip-esp-32/94B97EC34E10&quot;
-#define     OUT_TOPIC       &quot;devices/out/bip-esp-32/94B97EC34E10&quot;
+#define     IN_TOPIC        &quot;devices/in/bip-esp-32/112233445566&quot;
+#define     OUT_TOPIC       &quot;devices/out/bip-esp-32/112233445566&quot;
 #define     MQTT_URI        &quot;mqtt://emqx.bip.app-server.net/&quot;
 #define     MQTT_PORT        (1883)
 
@@ -455,6 +563,13 @@ static esp_mqtt_client_config_t mqtt_cfg = {
     .disable_auto_reconnect = false,
     .keepalive = 10,
 };
+
+static void get_mac_address()
+{
+    uint8_t mac[MAC_ADDR_SIZE];
+    esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+    ESP_LOGI(&quot;MAC address&quot;, &quot;MAC address: %02x:%02x:%02x:%02x:%02x:%02x&quot;, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
 
 $define${AOs::Cloud}
 $define${Shared::Cloud_ctor}
@@ -595,6 +710,10 @@ esp_err_t mqtt_app_init(topic_subscribe_set_t* bd_topics_subscribe) {
 
 typedef void (*func_cb_t)(void *data, uint32_t len_data);
 
+#define MAC_ADDR_SIZE 6
+
+uint8_t mac_address[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+
 
 typedef struct topic_subscribe_set {
     const char*     topic;
@@ -618,6 +737,43 @@ int mqtt_publish(const char *topic, const char *data, int len, int qos, int reta
 
 #endif // QHSM_MQTT_H_
 </text>
+  </file>
+  <file name="sensor.h">
+   <text>#ifndef SENSOR_H
+#define SENSOR_H
+
+enum SensorSignals {
+    START_MEAS_SIG= Q_USER_SIG,
+    STOP_MEAS_SIG,
+    SEND_MEAS_SIG,
+    SET_MEAS_INVL_SIG,
+};
+
+typedef struct sensor_data
+{
+    float temperature;
+    float pressure;
+} sensor_data_t;
+
+$declare${AOs::Sensor}
+$declare${Shared::SensorEvt}
+$declare${Shared::AO_Sensor}
+$declare${Shared::Sensor_ctor}
+
+#endif // SENSOR_H</text>
+  </file>
+  <file name="sensor.c">
+   <text>#include &quot;qpc.h&quot;
+#include &quot;esp_log.h&quot;
+#include &quot;bsp.h&quot;
+#include &quot;wifi_button.h&quot;
+
+static const char *TAG = &quot;Sensor&quot;;
+
+$define${AOs::Sensor}
+$define${Shared::SensorEvt}
+$define${Shared::AO_Sensor}
+$define${Shared::Sensor_ctor}</text>
   </file>
  </directory>
 </model>

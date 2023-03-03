@@ -31,8 +31,8 @@
 #ifndef MQTT_SETTINGS_H
 #define MQTT_SETTINGS_H
 
-#define     IN_TOPIC        "devices/in/bip-esp-32/94B97EC34E10"
-#define     OUT_TOPIC       "devices/out/bip-esp-32/94B97EC34E10"
+#define     IN_TOPIC        "devices/in/bip-esp-32/112233445566"
+#define     OUT_TOPIC       "devices/out/bip-esp-32/112233445566"
 #define     MQTT_URI        "mqtt://emqx.bip.app-server.net/"
 #define     MQTT_PORT        (1883)
 

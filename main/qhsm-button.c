@@ -55,7 +55,6 @@ Button Button_obj;
 /*${AOs::Button::SM} .......................................................*/
 QState Button_initial(Button * const me, void const * const par) {
     /*${AOs::Button::SM::initial} */
-    ESP_LOGI(TAG, "Button Initial transition");
     QActive_subscribe(&me->super, BUTTON_PRESSED_SIG);
     return Q_TRAN(&Button_Button);
 }
@@ -81,7 +80,7 @@ QState Button_Button(Button * const me, QEvt const * const e) {
 
                 case BUTTON_C: {
                     me->press_cntr++;
-                    if (me->press_cntr % 2)
+                    if (0 == me->press_cntr % 2)
                     {
                         ButtonEvt *pe = Q_NEW(ButtonEvt, STOP_TELEMETRY_SIG);
                         QACTIVE_PUBLISH(&pe->super, AO_Button);

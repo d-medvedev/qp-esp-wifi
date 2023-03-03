@@ -58,6 +58,13 @@ static esp_mqtt_client_config_t mqtt_cfg = {
     .keepalive = 10,
 };
 
+static void get_mac_address()
+{
+    uint8_t mac[MAC_ADDR_SIZE];
+    esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+    ESP_LOGI("MAC address", "MAC address: %02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
 /*$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 /* Check for the minimum required QP version */
 #if (QP_VERSION < 700U) || (QP_VERSION != ((QP_RELEASE^4294967295U) % 0x3E8U))
@@ -77,6 +84,9 @@ QState Cloud_initial(Cloud * const me, void const * const par) {
     QActive_subscribe(&me->super, GOT_IP_SIG);
     QActive_subscribe(&me->super, DISCONNECT_SIG);
     QActive_subscribe(&me->super, MQTT_CONNECTED_SIG);
+    QActive_subscribe(&me->super, SEND_MEAS_SIG);
+
+    get_mac_address();
     mqtt_app_init(list_topics_subscribe);
     return Q_TRAN(&Cloud_active);
 }
@@ -104,10 +114,17 @@ QState Cloud_connected(Cloud * const me, QEvt const * const e) {
     switch (e->sig) {
         /*${AOs::Cloud::SM::active::connected} */
         case Q_ENTRY_SIG: {
+            char* buf;
+            uint32_t len;
+
             ESP_LOGI(TAG, "MQTT Connected state");
 
             QTimeEvt_armX(&me->sendTimeEvt, BSP_TICKS_PER_SEC/2U,
                           BSP_TICKS_PER_SEC/2U);
+
+            len = asprintf(&buf, "{\"msg_type\": \"connect\",\"msg\":{\"device_id\": \"112233445566\",\"hw_version\": \"1.0.0.1\",\"fw_version\": \"%s\",\"username\": \"%s\",\"time\":{\"validity\": false,\"timestamp\": 1674706689}}}", /*got_ip_addr_str,*/ FW_VERSION, MQTT_USERNAME);
+            mqtt_publish(OUT_TOPIC, buf, len, 1, 0);
+            printf("%s\n\r", buf);
             status_ = Q_HANDLED();
             break;
         }
@@ -125,9 +142,14 @@ QState Cloud_connected(Cloud * const me, QEvt const * const e) {
             status_ = Q_TRAN(&Cloud_idle);
             break;
         }
-        /*${AOs::Cloud::SM::active::connected::SEND_TIMEOUT} */
-        case SEND_TIMEOUT_SIG: {
-            ESP_LOGI(TAG, "Send timer expired");
+        /*${AOs::Cloud::SM::active::connected::SEND_MEAS} */
+        case SEND_MEAS_SIG: {
+            char* buf;
+            uint32_t len;
+
+            len = asprintf(&buf,"{\"msg_type\": \"telemetry\",\"msg\":{\"params\":{\"temperature\":%.1f,\"pressure\":%.1f},\"time\":{\"validity\": true,\"timestamp\": 1674706689}}}", Q_EVT_CAST(SensorEvt)->temperature, Q_EVT_CAST(SensorEvt)->pressure);
+            mqtt_publish(OUT_TOPIC, buf, len, 1, 0);
+            printf("%s\n\r", buf);
             status_ = Q_HANDLED();
             break;
         }

@@ -32,11 +32,13 @@
 #ifndef BSP_H
 #define BSP_H
 
-#define BSP_TICKS_PER_SEC    33U
+#define BSP_TICKS_PER_SEC    800U
 
 #define BUTTON_A 39
 #define BUTTON_B 38
 #define BUTTON_C 37
+
+#define FW_VERSION "BP1.0.0.1"
 
 #define SPEAKER 25
 #define LED 36
@@ -47,5 +49,6 @@
 #define GPIO_OUTPUT_PIN_SEL (1ULL<<LED)
 
 void bsp_init       (void);
+bool read_bmp280_data (float *t, float *p);
 
 #endif

@@ -44,12 +44,14 @@ static QF_MPOOL_EL(largePool) largePoolSto[CONFIG_QPC_LARGE_POOL_SIZE];
 static QEvt const *wifiQueueSto[10];
 static QEvt const *buttonQueueSto[10];
 static QEvt const *cloudQueueSto[10];
+static QEvt const *sensorQueueSto[3];
 
 static QSubscrList subscrSto[MAX_PUB_SIG];
 
 static StackType_t wifiStack[4096];
 static StackType_t buttonStack[2048];
 static StackType_t cloudStack[4096];
+static StackType_t sensorStack[1024];
 
 void app_main(void)
 {
@@ -70,7 +72,8 @@ void app_main(void)
 
     WiFi_ctor(); /* instantiate WiFi active object */
     Button_ctor(); /* instantiate Button active object */
-    Cloud_ctor(); /* instantiate Cloud n active object */
+    Cloud_ctor(); /* instantiate Cloud active object */
+    Sensor_ctor(); /* instantiate Sensor active object */
 
      /* Initialzie QP/C Framework */
     QF_init();
@@ -87,6 +90,7 @@ void app_main(void)
     QActive_setAttr(AO_WiFi, TASK_NAME_ATTR, "WiFi");
     QActive_setAttr(AO_Button, TASK_NAME_ATTR, "Button");
     QActive_setAttr(AO_Cloud, TASK_NAME_ATTR, "Cloud");
+    QActive_setAttr(AO_Sensor, TASK_NAME_ATTR, "Sensor");
 
     QACTIVE_START(AO_WiFi,   /* AO to start */
                 (uint_fast8_t)(3),   /* QP priority of the AO */
@@ -110,6 +114,14 @@ void app_main(void)
                 Q_DIM(cloudQueueSto), /* queue length [events] */
                 cloudStack,           /* stack storage */
                 sizeof(cloudStack),   /* stack size [bytes] */
+                (QEvt *)0);
+
+    QACTIVE_START(AO_Sensor,   /* AO to start */
+                (uint_fast8_t)(6),   /* QP priority of the AO */
+                sensorQueueSto,        /* event queue storage */
+                Q_DIM(sensorQueueSto), /* queue length [events] */
+                sensorStack,           /* stack storage */
+                sizeof(sensorStack),   /* stack size [bytes] */
                 (QEvt *)0);
 
     QF_run();

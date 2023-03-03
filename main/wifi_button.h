@@ -45,12 +45,20 @@ enum wifiSignals {
     START_TELEMETRY_SIG,
     STOP_TELEMETRY_SIG,
     SEND_TIMEOUT_SIG,
+    MEAS_TIMEOUT_SIG,
     DISCONNECT_SIG,
     MQTT_CONNECTED_SIG,
     MQTT_DISCONNECTED_SIG,
+    SEND_MEAS_SIG,
 
     MAX_PUB_SIG
 };
+
+typedef struct sensor_data
+{
+    float temperature;
+    float pressure;
+} sensor_data_t;
 
 /*$declare${AOs::Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
@@ -112,6 +120,32 @@ QState Cloud_connected(Cloud * const me, QEvt const * const e);
 QState Cloud_idle(Cloud * const me, QEvt const * const e);
 QState Cloud_try_connect(Cloud * const me, QEvt const * const e);
 /*$enddecl${AOs::Cloud} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${AOs::Sensor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${AOs::Sensor} ...........................................................*/
+typedef struct Sensor {
+/* protected: */
+    QActive super;
+
+/* public: */
+
+/* private: */
+    uint32_t meas_interval_sec;
+
+/* public: */
+    sensor_data_t sensor_data;
+
+/* private: */
+    QTimeEvt measTimeEvt;
+} Sensor;
+extern Sensor Sensor_obj;
+
+/* protected: */
+QState Sensor_initial(Sensor * const me, void const * const par);
+QState Sensor_active(Sensor * const me, QEvt const * const e);
+QState Sensor_idle(Sensor * const me, QEvt const * const e);
+QState Sensor_read_data(Sensor * const me, QEvt const * const e);
+/*$enddecl${AOs::Sensor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 /*$declare${Shared::ButtonEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
@@ -143,6 +177,18 @@ typedef struct {
     QEvt super;
 } CloudEvt;
 /*$enddecl${Shared::CloudEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::SensorEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::SensorEvt} .....................................................*/
+typedef struct {
+/* protected: */
+    QEvt super;
+
+/* public: */
+    float temperature;
+    float pressure;
+} SensorEvt;
+/*$enddecl${Shared::SensorEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 /*$declare${Shared::AO_WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
@@ -159,6 +205,11 @@ extern QActive * const AO_Button;
 /*${Shared::AO_Cloud} ......................................................*/
 extern QActive * const AO_Cloud;
 /*$enddecl${Shared::AO_Cloud} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::AO_Sensor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::AO_Sensor} .....................................................*/
+extern QActive * const AO_Sensor;
+/*$enddecl${Shared::AO_Sensor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 /*$declare${Shared::WiFi_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
@@ -175,5 +226,10 @@ void Button_ctor(void);
 /*${Shared::Cloud_ctor} ....................................................*/
 void Cloud_ctor(void);
 /*$enddecl${Shared::Cloud_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::Sensor_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::Sensor_ctor} ...................................................*/
+void Sensor_ctor(void);
+/*$enddecl${Shared::Sensor_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 #endif

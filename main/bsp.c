@@ -98,7 +98,7 @@ static void buttons_processing_task(void* arg)
         // if (++bmp_read_cntr % 20 == 0)
         // {
         //     #if 1
-        //         bmp280_read_float(&bmp280_obj, &temperature, &pressure, &humidity);                
+        //         bmp280_read_float(&bmp280_obj, &temperature, &pressure, &humidity);
         //         printf("Temp: %.2f Pressure: %.2f \n", temperature, pressure);
         //     #endif
         // }
@@ -137,6 +137,14 @@ IRAM_ATTR void Q_onAssert(char_t const * const module, int_t location)
     ESP_LOGE(TAG, "Q_onAssert: module:%s loc:%d\n", module, location);
 }
 
+bool read_bmp280_data(float *t, float *p)
+{
+    if (bmp280_read_float(&bmp280_obj, t, p, &humidity))
+    {
+        return true;
+    }
+    return false;
+}
 
 void bsp_init (void) {
 

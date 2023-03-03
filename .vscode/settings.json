@@ -24,7 +24,10 @@
         "wifi_button.h": "c",
         "*.inc": "c",
         "bip-cloud.h": "c",
-        "bip_cloud.h": "c"
+        "bip_cloud.h": "c",
+        "sensor.h": "c",
+        "freertosconfig.h": "c",
+        "sdkconfig.h": "c"
     },
     "idf.flashType": "UART"
 }
