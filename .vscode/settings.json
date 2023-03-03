@@ -21,7 +21,10 @@
         "esp_freertos_hooks.h": "c",
         "gpio.h": "c",
         "task.h": "c",
-        "wifi_button.h": "c"
+        "wifi_button.h": "c",
+        "*.inc": "c",
+        "bip-cloud.h": "c",
+        "bip_cloud.h": "c"
     },
     "idf.flashType": "UART"
 }

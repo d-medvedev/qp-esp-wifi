@@ -95,13 +95,13 @@ static void buttons_processing_task(void* arg)
             printf("Button C pressed \n");
         }
         
-        if (++bmp_read_cntr % 20 == 0)
-        {
-            #if 1
-                bmp280_read_float(&bmp280_obj, &temperature, &pressure, &humidity);                
-                printf("Temp: %.2f Pressure: %.2f \n", temperature, pressure);
-            #endif
-        }
+        // if (++bmp_read_cntr % 20 == 0)
+        // {
+        //     #if 1
+        //         bmp280_read_float(&bmp280_obj, &temperature, &pressure, &humidity);                
+        //         printf("Temp: %.2f Pressure: %.2f \n", temperature, pressure);
+        //     #endif
+        // }
 
         vTaskDelay(50 / portTICK_RATE_MS);
     }

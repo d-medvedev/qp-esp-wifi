@@ -42,24 +42,19 @@ enum wifiSignals {
     GOT_IP_SIG,
     LOST_IP_SIG,
     BUTTON_PRESSED_SIG,
-    DISCONNECT_BUTTON_B_SIG,
+    START_TELEMETRY_SIG,
+    STOP_TELEMETRY_SIG,
+    SEND_TIMEOUT_SIG,
+    DISCONNECT_SIG,
+    MQTT_CONNECTED_SIG,
+    MQTT_DISCONNECTED_SIG,
+
     MAX_PUB_SIG
 };
 
-/*$declare${Events::ButtonEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$declare${AOs::Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${Events::ButtonEvt} .....................................................*/
-typedef struct {
-/* protected: */
-    QEvt super;
-
-/* public: */
-    uint8_t buttonNum;
-} ButtonEvt;
-/*$enddecl${Events::ButtonEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$declare${AOs::Peripherals::Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
-
-/*${AOs::Peripherals::Button} ..............................................*/
+/*${AOs::Button} ...........................................................*/
 typedef struct Button {
 /* protected: */
     QActive super;
@@ -68,38 +63,17 @@ typedef struct Button {
 
 /* private: */
     QTimeEvt timeEvt;
+    uint32_t press_cntr;
 } Button;
 extern Button Button_obj;
 
 /* protected: */
 QState Button_initial(Button * const me, void const * const par);
 QState Button_Button(Button * const me, QEvt const * const e);
-/*$enddecl${AOs::Peripherals::Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$declare${AOs::Ctors::Button_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$enddecl${AOs::Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${AOs::WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Ctors::Button_ctor} ...............................................*/
-void Button_ctor(void);
-/*$enddecl${AOs::Ctors::Button_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$declare${AOs::Opaque_pointers::AO_Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
-
-/*${AOs::Opaque_pointers::AO_Button} .......................................*/
-extern QActive * const AO_Button;
-/*$enddecl${AOs::Opaque_pointers::AO_Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-
-/*$declare${Events::WifiEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
-
-/*${Events::WifiEvt} .......................................................*/
-typedef struct {
-/* protected: */
-    QEvt super;
-
-/* public: */
-    uint8_t n;
-} WifiEvt;
-/*$enddecl${Events::WifiEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$declare${AOs::Connectivity::WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
-
-/*${AOs::Connectivity::WiFi} ...............................................*/
+/*${AOs::WiFi} .............................................................*/
 typedef struct WiFi {
 /* protected: */
     QActive super;
@@ -115,18 +89,91 @@ QState WiFi_connected(WiFi * const me, QEvt const * const e);
 QState WiFi_disconnect(WiFi * const me, QEvt const * const e);
 QState WiFi_try_connect(WiFi * const me, QEvt const * const e);
 QState WiFi_got_ip(WiFi * const me, QEvt const * const e);
-QState WiFi_buttons_dispatch(WiFi * const me, QEvt const * const e);
 QState WiFi_init(WiFi * const me, QEvt const * const e);
-/*$enddecl${AOs::Connectivity::WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$declare${AOs::Ctors::WiFi_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$enddecl${AOs::WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${AOs::Cloud} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Ctors::WiFi_ctor} .................................................*/
-void WiFi_ctor(void);
-/*$enddecl${AOs::Ctors::WiFi_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$declare${AOs::Opaque_pointers::AO_WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*${AOs::Cloud} ............................................................*/
+typedef struct Cloud {
+/* protected: */
+    QActive super;
 
-/*${AOs::Opaque_pointers::AO_WiFi} .........................................*/
+/* public: */
+
+/* private: */
+    QTimeEvt sendTimeEvt;
+} Cloud;
+extern Cloud Cloud_obj;
+
+/* protected: */
+QState Cloud_initial(Cloud * const me, void const * const par);
+QState Cloud_active(Cloud * const me, QEvt const * const e);
+QState Cloud_connected(Cloud * const me, QEvt const * const e);
+QState Cloud_idle(Cloud * const me, QEvt const * const e);
+QState Cloud_try_connect(Cloud * const me, QEvt const * const e);
+/*$enddecl${AOs::Cloud} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+/*$declare${Shared::ButtonEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::ButtonEvt} .....................................................*/
+typedef struct {
+/* protected: */
+    QEvt super;
+
+/* public: */
+    uint8_t buttonNum;
+} ButtonEvt;
+/*$enddecl${Shared::ButtonEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::WifiEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::WifiEvt} .......................................................*/
+typedef struct {
+/* protected: */
+    QEvt super;
+
+/* public: */
+    uint8_t n;
+} WifiEvt;
+/*$enddecl${Shared::WifiEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::CloudEvt} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::CloudEvt} ......................................................*/
+typedef struct {
+/* protected: */
+    QEvt super;
+} CloudEvt;
+/*$enddecl${Shared::CloudEvt} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+/*$declare${Shared::AO_WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::AO_WiFi} .......................................................*/
 extern QActive * const AO_WiFi;
-/*$enddecl${AOs::Opaque_pointers::AO_WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$enddecl${Shared::AO_WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::AO_Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::AO_Button} .....................................................*/
+extern QActive * const AO_Button;
+/*$enddecl${Shared::AO_Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::AO_Cloud} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::AO_Cloud} ......................................................*/
+extern QActive * const AO_Cloud;
+/*$enddecl${Shared::AO_Cloud} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+/*$declare${Shared::WiFi_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::WiFi_ctor} .....................................................*/
+void WiFi_ctor(void);
+/*$enddecl${Shared::WiFi_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::Button_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::Button_ctor} ...................................................*/
+void Button_ctor(void);
+/*$enddecl${Shared::Button_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$declare${Shared::Cloud_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+
+/*${Shared::Cloud_ctor} ....................................................*/
+void Cloud_ctor(void);
+/*$enddecl${Shared::Cloud_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 #endif

@@ -47,43 +47,50 @@ static const char * TAG = "button";
 #endif
 /*$endskip${QP_VERSION} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
-/*$define${AOs::Peripherals::Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$define${AOs::Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Peripherals::Button} ..............................................*/
+/*${AOs::Button} ...........................................................*/
 Button Button_obj;
 
-/*${AOs::Peripherals::Button::SM} ..........................................*/
+/*${AOs::Button::SM} .......................................................*/
 QState Button_initial(Button * const me, void const * const par) {
-    /*${AOs::Peripherals::Button::SM::initial} */
+    /*${AOs::Button::SM::initial} */
     ESP_LOGI(TAG, "Button Initial transition");
     QActive_subscribe(&me->super, BUTTON_PRESSED_SIG);
     return Q_TRAN(&Button_Button);
 }
 
-/*${AOs::Peripherals::Button::SM::Button} ..................................*/
+/*${AOs::Button::SM::Button} ...............................................*/
 QState Button_Button(Button * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Peripherals::Button::SM::Button::BUTTON_PRESSED} */
+        /*${AOs::Button::SM::Button::BUTTON_PRESSED} */
         case BUTTON_PRESSED_SIG: {
-            ESP_LOGI(TAG, "Pressed button is %d", Q_EVT_CAST(ButtonEvt)->buttonNum);
-
             switch (Q_EVT_CAST(ButtonEvt)->buttonNum) {
                 case BUTTON_A: {
                     ButtonEvt *pe = Q_NEW(ButtonEvt, CONNECT_SIG);
                     QACTIVE_PUBLISH(&pe->super, AO_Button);
-                    ESP_LOGI(TAG, "Posted CONNECTING_SIG");
                     break;
                 }
 
                 case BUTTON_B: {
-                    ButtonEvt *pe = Q_NEW(ButtonEvt, DISCONNECT_BUTTON_B_SIG);
+                    ButtonEvt *pe = Q_NEW(ButtonEvt, DISCONNECT_SIG);
                     QACTIVE_PUBLISH(&pe->super, AO_Button);
-                    ESP_LOGI(TAG, "Posted FORCE_DISCONNECT_SIG");
                     break;
                 }
 
                 case BUTTON_C: {
+                    me->press_cntr++;
+                    if (me->press_cntr % 2)
+                    {
+                        ButtonEvt *pe = Q_NEW(ButtonEvt, STOP_TELEMETRY_SIG);
+                        QACTIVE_PUBLISH(&pe->super, AO_Button);
+                    }
+                    else
+                    {
+                        ButtonEvt *pe = Q_NEW(ButtonEvt, START_TELEMETRY_SIG);
+                        QACTIVE_PUBLISH(&pe->super, AO_Button);
+                    }
                     break;
                 }
 
@@ -100,18 +107,19 @@ QState Button_Button(Button * const me, QEvt const * const e) {
     }
     return status_;
 }
-/*$enddef${AOs::Peripherals::Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$define${AOs::Ctors::Button_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$enddef${AOs::Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$define${Shared::Button_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Ctors::Button_ctor} ...............................................*/
+/*${Shared::Button_ctor} ...................................................*/
 void Button_ctor(void) {
     Button *me = &Button_obj;
 
     QActive_ctor(&Button_obj.super, Q_STATE_CAST(&Button_initial));
+    me->press_cntr = 0;
 }
-/*$enddef${AOs::Ctors::Button_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$define${AOs::Opaque_pointers::AO_Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$enddef${Shared::Button_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$define${Shared::AO_Button} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Opaque_pointers::AO_Button} .......................................*/
+/*${Shared::AO_Button} .....................................................*/
 QActive * const AO_Button  = &Button_obj.super;
-/*$enddef${AOs::Opaque_pointers::AO_Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$enddef${Shared::AO_Button} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/

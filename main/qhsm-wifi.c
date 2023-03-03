@@ -66,8 +66,6 @@ static wifi_config_t wifi_config = {
     },
 };
 
-
-
 /*$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 /* Check for the minimum required QP version */
 #if (QP_VERSION < 700U) || (QP_VERSION != ((QP_RELEASE^4294967295U) % 0x3E8U))
@@ -75,29 +73,29 @@ static wifi_config_t wifi_config = {
 #endif
 /*$endskip${QP_VERSION} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
-/*$define${AOs::Connectivity::WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$define${AOs::WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Connectivity::WiFi} ...............................................*/
+/*${AOs::WiFi} .............................................................*/
 WiFi WiFi_obj;
 
-/*${AOs::Connectivity::WiFi::SM} ...........................................*/
+/*${AOs::WiFi::SM} .........................................................*/
 QState WiFi_initial(WiFi * const me, void const * const par) {
-    /*${AOs::Connectivity::WiFi::SM::initial} */
+    /*${AOs::WiFi::SM::initial} */
     return Q_TRAN(&WiFi_init);
 }
 
-/*${AOs::Connectivity::WiFi::SM::sta_started} ..............................*/
+/*${AOs::WiFi::SM::sta_started} ............................................*/
 QState WiFi_sta_started(WiFi * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::sta_started::DISCONNECT_BUTTON_B} */
-        case DISCONNECT_BUTTON_B_SIG: {
+        /*${AOs::WiFi::SM::sta_started::MQTT_DISCONNECTED} */
+        case MQTT_DISCONNECTED_SIG: {
             status_ = Q_TRAN(&WiFi_disconnect);
             break;
         }
-        /*${AOs::Connectivity::WiFi::SM::sta_started::CONNECTION_LOST} */
-        case CONNECTION_LOST_SIG: {
-            status_ = Q_TRAN(&WiFi_disconnect);
+        /*${AOs::WiFi::SM::sta_started::CONNECT} */
+        case CONNECT_SIG: {
+            status_ = Q_TRAN(&WiFi_try_connect);
             break;
         }
         default: {
@@ -108,23 +106,11 @@ QState WiFi_sta_started(WiFi * const me, QEvt const * const e) {
     return status_;
 }
 
-/*${AOs::Connectivity::WiFi::SM::sta_started::connected} ...................*/
+/*${AOs::WiFi::SM::sta_started::connected} .................................*/
 QState WiFi_connected(WiFi * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::sta_started::connected} */
-        case Q_ENTRY_SIG: {
-            ESP_LOGI(TAG, "Entered connected state");
-            status_ = Q_HANDLED();
-            break;
-        }
-        /*${AOs::Connectivity::WiFi::SM::sta_started::connected} */
-        case Q_EXIT_SIG: {
-            ESP_LOGI(TAG, "Exit Connected state");
-            status_ = Q_HANDLED();
-            break;
-        }
-        /*${AOs::Connectivity::WiFi::SM::sta_started::connected::GOT_IP} */
+        /*${AOs::WiFi::SM::sta_started::connected::GOT_IP} */
         case GOT_IP_SIG: {
             status_ = Q_TRAN(&WiFi_got_ip);
             break;
@@ -137,13 +123,13 @@ QState WiFi_connected(WiFi * const me, QEvt const * const e) {
     return status_;
 }
 
-/*${AOs::Connectivity::WiFi::SM::sta_started::disconnect} ..................*/
+/*${AOs::WiFi::SM::sta_started::disconnect} ................................*/
 QState WiFi_disconnect(WiFi * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::sta_started::disconnect} */
+        /*${AOs::WiFi::SM::sta_started::disconnect} */
         case Q_ENTRY_SIG: {
-            ESP_LOGI(TAG, " Entered disconnect state");
+            esp_wifi_disconnect();
             status_ = Q_HANDLED();
             break;
         }
@@ -155,11 +141,11 @@ QState WiFi_disconnect(WiFi * const me, QEvt const * const e) {
     return status_;
 }
 
-/*${AOs::Connectivity::WiFi::SM::sta_started::try_connect} .................*/
+/*${AOs::WiFi::SM::sta_started::try_connect} ...............................*/
 QState WiFi_try_connect(WiFi * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::sta_started::try_connect} */
+        /*${AOs::WiFi::SM::sta_started::try_connect} */
         case Q_ENTRY_SIG: {
             ESP_LOGI(TAG, "Connecting state");
 
@@ -167,7 +153,7 @@ QState WiFi_try_connect(WiFi * const me, QEvt const * const e) {
             status_ = Q_HANDLED();
             break;
         }
-        /*${AOs::Connectivity::WiFi::SM::sta_started::try_connect::CONNECTED} */
+        /*${AOs::WiFi::SM::sta_started::try_connect::CONNECTED} */
         case CONNECTED_SIG: {
             status_ = Q_TRAN(&WiFi_connected);
             break;
@@ -180,17 +166,11 @@ QState WiFi_try_connect(WiFi * const me, QEvt const * const e) {
     return status_;
 }
 
-/*${AOs::Connectivity::WiFi::SM::sta_started::got_ip} ......................*/
+/*${AOs::WiFi::SM::sta_started::got_ip} ....................................*/
 QState WiFi_got_ip(WiFi * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::sta_started::got_ip} */
-        case Q_ENTRY_SIG: {
-            ESP_LOGI(TAG, "Entered GOT IP state");
-            status_ = Q_HANDLED();
-            break;
-        }
-        /*${AOs::Connectivity::WiFi::SM::sta_started::got_ip::LOST_IP} */
+        /*${AOs::WiFi::SM::sta_started::got_ip::LOST_IP} */
         case LOST_IP_SIG: {
             status_ = Q_TRAN(&WiFi_connected);
             break;
@@ -203,43 +183,20 @@ QState WiFi_got_ip(WiFi * const me, QEvt const * const e) {
     return status_;
 }
 
-/*${AOs::Connectivity::WiFi::SM::sta_started::buttons_dispatch} ............*/
-QState WiFi_buttons_dispatch(WiFi * const me, QEvt const * const e) {
-    QState status_;
-    switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::sta_started::buttons_dispatch} */
-        case Q_ENTRY_SIG: {
-            ESP_LOGI(TAG, "Button dispatch state");
-            status_ = Q_HANDLED();
-            break;
-        }
-        /*${AOs::Connectivity::WiFi::SM::sta_started::buttons_dispatch::CONNECT} */
-        case CONNECT_SIG: {
-            status_ = Q_TRAN(&WiFi_try_connect);
-            break;
-        }
-        default: {
-            status_ = Q_SUPER(&WiFi_sta_started);
-            break;
-        }
-    }
-    return status_;
-}
-
-/*${AOs::Connectivity::WiFi::SM::init} .....................................*/
+/*${AOs::WiFi::SM::init} ...................................................*/
 QState WiFi_init(WiFi * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        /*${AOs::Connectivity::WiFi::SM::init} */
+        /*${AOs::WiFi::SM::init} */
         case Q_ENTRY_SIG: {
             // Subscribt to required signals from QF
             QActive_subscribe(&me->super, CONNECT_SIG);
-            QActive_subscribe(&me->super, DISCONNECT_BUTTON_B_SIG);
             QActive_subscribe(&me->super, CONNECTED_SIG);
             QActive_subscribe(&me->super, GOT_IP_SIG);
             QActive_subscribe(&me->super, LOST_IP_SIG);
             QActive_subscribe(&me->super, STA_STARTED_SIG);
             QActive_subscribe(&me->super, CONNECTION_LOST_SIG);
+            QActive_subscribe(&me->super, MQTT_DISCONNECTED_SIG);
 
             // Disable default WiFi logging messages
             esp_log_level_set("wifi", ESP_LOG_NONE);
@@ -270,9 +227,9 @@ QState WiFi_init(WiFi * const me, QEvt const * const e) {
             status_ = Q_HANDLED();
             break;
         }
-        /*${AOs::Connectivity::WiFi::SM::init::STA_STARTED} */
+        /*${AOs::WiFi::SM::init::STA_STARTED} */
         case STA_STARTED_SIG: {
-            status_ = Q_TRAN(&WiFi_buttons_dispatch);
+            status_ = Q_TRAN(&WiFi_sta_started);
             break;
         }
         default: {
@@ -282,19 +239,19 @@ QState WiFi_init(WiFi * const me, QEvt const * const e) {
     }
     return status_;
 }
-/*$enddef${AOs::Connectivity::WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$define${AOs::Ctors::WiFi_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$enddef${AOs::WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$define${Shared::WiFi_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Ctors::WiFi_ctor} .................................................*/
+/*${Shared::WiFi_ctor} .....................................................*/
 void WiFi_ctor(void) {
     QActive_ctor(&WiFi_obj.super, Q_STATE_CAST(&WiFi_initial));
 }
-/*$enddef${AOs::Ctors::WiFi_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
-/*$define${AOs::Opaque_pointers::AO_WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
+/*$enddef${Shared::WiFi_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$define${Shared::AO_WiFi} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv*/
 
-/*${AOs::Opaque_pointers::AO_WiFi} .........................................*/
+/*${Shared::AO_WiFi} .......................................................*/
 QActive * const AO_WiFi  = &WiFi_obj.super;
-/*$enddef${AOs::Opaque_pointers::AO_WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*$enddef${Shared::AO_WiFi} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT) {
@@ -303,23 +260,22 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case WIFI_EVENT_STA_START: {
                 WifiEvt *pe = Q_NEW(WifiEvt, STA_STARTED_SIG);
                 QACTIVE_PUBLISH(&pe->super, AO_WiFi);
-                ESP_LOGW(TAG, "Published STA_STARTED_SIG");
+                ESP_LOGW(TAG, "WIFI_EVENT_STA_START");
             }
             break;
 
             case WIFI_EVENT_STA_DISCONNECTED: {
                 system_event_sta_disconnected_t* event = (system_event_sta_disconnected_t*)event_data;
-                ESP_LOGW(TAG,"connect to the AP fail - reason %i", event->reason); // wifi_err_reason_t
+                ESP_LOGW(TAG,"WIFI_EVENT_STA_DISONNECTED");
                 WifiEvt *pe = Q_NEW(WifiEvt, DISCONNECTED_SIG);
                 QACTIVE_PUBLISH(&pe->super, AO_WiFi);
-                ESP_LOGW(TAG, "Published DISCONNECTED_SIG");
             }
             break;
 
             case WIFI_EVENT_STA_CONNECTED: {
                 WifiEvt *pe = Q_NEW(WifiEvt, CONNECTED_SIG);
                 QACTIVE_PUBLISH(&pe->super, AO_WiFi);
-                ESP_LOGW(TAG, "Published WIFI_EVENT_STA_CONNECTED");
+                ESP_LOGW(TAG, "WIFI_EVENT_STA_CONNECTED");
             }
             break;
         }
@@ -330,8 +286,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 QACTIVE_PUBLISH(&pe->super, AO_WiFi);
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-                ESP_LOGW(TAG, "Published GOT_IP_SIG");
-
+                ESP_LOGW(TAG, "IP_EVENT_STA_GOT_IP");
             }
             break;
         }
