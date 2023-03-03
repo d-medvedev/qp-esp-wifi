@@ -44,14 +44,14 @@ static QF_MPOOL_EL(largePool) largePoolSto[CONFIG_QPC_LARGE_POOL_SIZE];
 static QEvt const *wifiQueueSto[10];
 static QEvt const *buttonQueueSto[10];
 static QEvt const *cloudQueueSto[10];
-static QEvt const *sensorQueueSto[3];
+static QEvt const *sensorQueueSto[10];
 
 static QSubscrList subscrSto[MAX_PUB_SIG];
 
 static StackType_t wifiStack[4096];
 static StackType_t buttonStack[2048];
 static StackType_t cloudStack[4096];
-static StackType_t sensorStack[1024];
+static StackType_t sensorStack[4096];
 
 void app_main(void)
 {
