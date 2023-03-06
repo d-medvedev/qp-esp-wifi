@@ -55,6 +55,25 @@ static bmp280_params_t bmp280_params;
 
 static float temperature, pressure, humidity;
 
+#ifdef Q_SPY
+
+    QSTimeCtr QS_tickTime_;
+    QSTimeCtr QS_tickPeriod_;
+
+    /* QSpy source IDs */
+    static QSpyId const l_SysTick_Handler = { 0U };
+
+    //static UART_HandleTypeDef l_uartHandle;
+
+    enum AppRecords { /* application-specific trace records */
+        PHILO_STAT = QS_USER,
+        PAUSED_STAT,
+        COMMAND_STAT,
+        CONTEXT_SW,
+    };
+
+#endif
+
 int_t qf_run_active = 0;
 
 bool debounce_switch(uint8_t buttonType)
@@ -94,14 +113,6 @@ static void buttons_processing_task(void* arg)
             QACTIVE_PUBLISH(&pe->super, AO_Button);
             printf("Button C pressed \n");
         }
-        
-        // if (++bmp_read_cntr % 20 == 0)
-        // {
-        //     #if 1
-        //         bmp280_read_float(&bmp280_obj, &temperature, &pressure, &humidity);
-        //         printf("Temp: %.2f Pressure: %.2f \n", temperature, pressure);
-        //     #endif
-        // }
 
         vTaskDelay(50 / portTICK_RATE_MS);
     }
@@ -146,7 +157,47 @@ bool read_bmp280_data(float *t, float *p)
     return false;
 }
 
+#if 0
+/*..........................................................................*/
+
+void QS_onFlush(void) {
+    uint16_t b;
+
+    QF_INT_DISABLE();
+    while ((b /*= QS_getByte()*/) != QS_EOD) { /* while not End-Of-Data... */
+        QF_INT_ENABLE();
+        /* while TXE not empty */
+        // while ((l_uartHandle.Instance->ISR & UART_FLAG_TXE) == 0U) {
+        // }
+        // l_uartHandle.Instance->TDR = (b & 0xFFU);  /* put into TDR */
+        QF_INT_DISABLE();
+    }
+    QF_INT_ENABLE();
+}
+/*..........................................................................*/
+QSTimeCtr QS_onGetTime(void) {  /* NOTE: invoked with interrupts DISABLED */
+    // if ((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) == 0) { /* not set? */
+    //     return QS_tickTime_ - (QSTimeCtr)SysTick->VAL;
+    // }
+    // else { /* the rollover occured, but the SysTick_ISR did not run yet */
+    //     return QS_tickTime_ + QS_tickPeriod_ - (QSTimeCtr)SysTick->VAL;
+    // }
+    return true;
+}
+#endif
+
 void bsp_init (void) {
+
+    QS_OBJ_DICTIONARY(&Cloud_obj);
+
+    // QS_SIG_DICTIONARY(GOT_IP_SIG,            (void *)0); /* global signals */
+    // QS_SIG_DICTIONARY(DISCONNECT_SIG,        (void *)0);
+    // QS_SIG_DICTIONARY(MQTT_CONNECTED_SIG,    (void *)0);
+    // QS_SIG_DICTIONARY(SEND_MEAS_SIG,         (void *)0);
+
+    // QS_FUN_DICTIONARY(&Cloud_idle);
+    // QS_FUN_DICTIONARY(&Table_connected);
+    // QS_FUN_DICTIONARY(&Table_try_connect);
 
     //Zero-initialize the config structure.
     gpio_config_t io_conf = {};

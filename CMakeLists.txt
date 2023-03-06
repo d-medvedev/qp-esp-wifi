@@ -4,6 +4,11 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.5)
 
+if(CONFIG_QPC_QSPY_ENABLE)
+    list(APPEND src_dirs ${qpc_path}/src/qs)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DQ_SPY")
+endif()
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 set(EXTRA_COMPONENT_DIRS "esp-idf-lib/components")
 project(esp32-qp-wifi)
