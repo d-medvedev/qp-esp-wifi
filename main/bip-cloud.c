@@ -122,7 +122,7 @@ QState Cloud_connected(Cloud * const me, QEvt const * const e) {
             QTimeEvt_armX(&me->sendTimeEvt, BSP_TICKS_PER_SEC/2U,
                           BSP_TICKS_PER_SEC/2U);
 
-            len = asprintf(&buf, "{\"msg_type\": \"connect\",\"msg\":{\"device_id\": \"112233445566\",\"hw_version\": \"1.0.0.1\",\"fw_version\": \"%s\",\"username\": \"%s\",\"time\":{\"validity\": false,\"timestamp\": 1674706689}}}", /*got_ip_addr_str,*/ FW_VERSION, MQTT_USERNAME);
+            len = asprintf(&buf, "{\"msg_type\": \"connect\",\"msg\":{\"device_id\": \"%02x:%02x:%02x:%02x:%02x:%02x\",\"hw_version\": \"1.0.0.1\",\"fw_version\": \"%s\",\"username\": \"%s\",\"time\":{\"validity\": false,\"timestamp\": 1674706689}}}", mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5], FW_VERSION, MQTT_USERNAME);
             mqtt_publish(OUT_TOPIC, buf, len, 1, 0);
             printf("%s\n\r", buf);
             status_ = Q_HANDLED();
